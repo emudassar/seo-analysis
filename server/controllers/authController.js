@@ -2,9 +2,22 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-// Generate JWT token
+function getJwtSecret() {
+    const secret = process.env.JWT_SECRET?.trim();
+    if (!secret) {
+        throw new Error("JWT_SECRET is not configured on the server");
+    }
+    return secret;
+}
+
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+    return jwt.sign({ id }, getJwtSecret(), { expiresIn: "30d" });
+};
+
+const publicUser = (user) => {
+    const obj = user.toObject ? user.toObject() : { ...user };
+    delete obj.password;
+    return obj;
 };
 
 // Register user
@@ -26,10 +39,11 @@ export const register = async (req, res) => {
 
         const token = generateToken(user._id);
 
-        res.status(201).json({ success: true, token, user });
+        res.status(201).json({ success: true, token, user: publicUser(user) });
     } catch (error) {
         console.error("Register error:", error.message);
-        res.status(500).json({ success: false, message: "Server error" });
+        const msg = error.message?.includes("JWT_SECRET") ? error.message : "Server error";
+        res.status(500).json({ success: false, message: msg });
     }
 };
 
@@ -52,10 +66,11 @@ export const login = async (req, res) => {
 
         const token = generateToken(user._id);
 
-        res.status(201).json({ success: true, token, user });
+        res.status(201).json({ success: true, token, user: publicUser(user) });
     } catch (error) {
-        console.error("Register error:", error.message);
-        res.status(500).json({ success: false, message: "Server error" });
+        console.error("Login error:", error.message);
+        const msg = error.message?.includes("JWT_SECRET") ? error.message : "Server error";
+        res.status(500).json({ success: false, message: msg });
     }
 };
 

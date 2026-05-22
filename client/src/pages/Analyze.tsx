@@ -82,7 +82,11 @@ export default function Analyze() {
                             setTimeout(() => navigate(`/report/${id}`), 800);
                         } else if (analysis.status === "failed") {
                             clearPoll();
-                            setError("Analysis failed. The site may be unreachable or the AI service is temporarily unavailable. Please try again.");
+                            const detail = analysis.errorMessage?.trim();
+                            setError(
+                                detail ||
+                                    "Analysis failed. The site may be unreachable or the AI service is temporarily unavailable. Please try again."
+                            );
                             setAnalyzing(false);
                         } else if (attempts > 3) {
                             setCurrentStep(2);

@@ -29,8 +29,10 @@ export const analyzeUrl = async (req, res) => {
             const scrapeResult = await scrapeUrl(validUrl.href);
 
             if (!scrapeResult.success) {
-                console.error("[ANALYSIS] Scrape failed:", scrapeResult.error);
+                const msg = scrapeResult.error || "Could not scrape the website";
+                console.error("[ANALYSIS] Scrape failed:", msg);
                 analysis.status = "failed";
+                analysis.errorMessage = msg;
                 await analysis.save();
                 return;
             }
@@ -39,8 +41,10 @@ export const analyzeUrl = async (req, res) => {
             const aiResult = await analyzeSeoData(scrapeResult.data);
 
             if (!aiResult.success) {
-                console.error("[ANALYSIS] AI failed:", aiResult.error);
+                const msg = aiResult.error || "AI analysis failed";
+                console.error("[ANALYSIS] AI failed:", msg);
                 analysis.status = "failed";
+                analysis.errorMessage = msg;
                 await analysis.save();
                 return;
             }
@@ -64,6 +68,7 @@ export const analyzeUrl = async (req, res) => {
             console.error("Background analysis error:", bgError.message);
             try {
                 analysis.status = "failed";
+                analysis.errorMessage = bgError.message;
                 await analysis.save();
             } catch (saveError) {
                 console.error("Failed to save failed status:", saveError.message);

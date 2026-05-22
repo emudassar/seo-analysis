@@ -3,6 +3,14 @@ import {
     releaseEphemeralScraperPage,
     humanDelay,
 } from "./playwrightBrowser.js";
+import { scrapeWithFetch } from "./fetchScraperService.js";
+
+/** Render and other PaaS hosts: use HTTP fetch (Playwright often fails there). */
+export function shouldUseFetchScraper() {
+    if (process.env.SCRAPER === "playwright") return false;
+    if (process.env.SCRAPER === "fetch") return true;
+    return process.env.RENDER === "true";
+}
 
 /** In-page extraction script (shared by single + parallel scrapes). */
 export function getPageExtractionScript() {
@@ -104,10 +112,11 @@ async function scrapeWithPage(page, url) {
         loadTime,
         statusCode,
         url,
+        scrapeMethod: "playwright",
     };
 }
 
-export async function scrapeUrl(url) {
+async function scrapeWithPlaywright(url) {
     let session;
     try {
         session = await acquireEphemeralScraperPage();
@@ -119,6 +128,22 @@ export async function scrapeUrl(url) {
         if (session) await releaseEphemeralScraperPage(session).catch(() => {});
         return { success: false, error: error.message };
     }
+}
+
+export async function scrapeUrl(url) {
+    if (shouldUseFetchScraper()) {
+        console.log("[SCRAPER] Using HTTP fetch (production/Render mode)");
+        return scrapeWithFetch(url);
+    }
+
+    const pwResult = await scrapeWithPlaywright(url);
+    if (pwResult.success) return pwResult;
+
+    console.warn("[SCRAPER] Playwright failed, falling back to HTTP fetch:", pwResult.error);
+    const fetchResult = await scrapeWithFetch(url);
+    if (fetchResult.success) return fetchResult;
+
+    return { success: false, error: fetchResult.error || pwResult.error };
 }
 
 /** Scrape multiple URLs in parallel (each with its own browser session). */

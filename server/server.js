@@ -7,7 +7,17 @@ import analysisRouter from "./routes/analysisRoutes.js";
 
 const PORT = process.env.PORT || 5000;
 
+function warnMissingEnv() {
+    const missing = [];
+    if (!process.env.JWT_SECRET?.trim()) missing.push("JWT_SECRET");
+    if (!process.env.GEMINI_API_KEY?.trim()) missing.push("GEMINI_API_KEY");
+    if (missing.length) {
+        console.warn(`[ENV] Missing on server: ${missing.join(", ")} — auth/AI features will fail until set in Render Environment.`);
+    }
+}
+
 async function start() {
+    warnMissingEnv();
     try {
         await connectDB();
     } catch (err) {
